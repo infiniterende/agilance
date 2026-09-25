@@ -16,8 +16,8 @@ Backend service for **Agilance**, providing APIs and core business logic for the
 ## 🧱 Tech Stack
 
 * **Python 3**
-* **FastAPI / Flask** (depending on implementation)
-* **Uvicorn / Gunicorn** for serving
+* **FastAPI** (Python 3.11)
+* **Uvicorn** for serving
 * **Docker** for containerization
 
 ---
@@ -61,16 +61,8 @@ pip install -r requirements.txt
 
 ### 4. Run the server locally
 
-If using **FastAPI**:
-
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-If using **Flask**:
-
-```bash
-python main.py
 ```
 
 The API should now be available at:
