@@ -1,0 +1,29 @@
+# Production overrides: built images, no bind mounts, no hot reload.
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+#   (or simply `make prod-up`)
+
+services:
+  backend:
+    volumes: []
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2
+    restart: unless-stopped
+
+  agent:
+    volumes: []
+    restart: unless-stopped
+
+  frontend:
+    image: agilance-frontend
+    build:
+      context: ./frontend
+      args:
+        # Baked into the client bundle at build time
+        NEXT_PUBLIC_API_ENDPOINT: ${NEXT_PUBLIC_API_ENDPOINT:-http://localhost:8000}
+        NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-}
+    volumes: []
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_ENDPOINT: ${NEXT_PUBLIC_API_ENDPOINT:-http://localhost:8000}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+    command: npm run start
+    restart: unless-stopped

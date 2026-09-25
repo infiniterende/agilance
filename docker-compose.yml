@@ -1,0 +1,100 @@
+# Agilance — local development stack
+#
+#   make up          → backend (FastAPI, hot reload) + frontend (Next.js dev server)
+#   make up-voice    → …plus the LiveKit voice agent
+#   make up-localdb  → …plus a local Postgres (if you don't want to use Supabase)
+#
+# Production images: `make prod-up` layers docker-compose.prod.yml on top.
+#
+# Secrets come from backend/.env and frontend/.env.local (both git-ignored).
+
+name: agilance
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      PORT: "8000"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./backend:/app
+      - /app/.venv # never leak a macOS venv into the Linux container
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/pathway/catalog').status==200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # LiveKit voice agent — only needed for /assessment?mode=voice
+  agent:
+    build: ./backend
+    profiles: ["voice"]
+    env_file:
+      - ./backend/.env
+    environment:
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    command: python agent.py start
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: ./frontend/.env.local
+        required: false
+    environment:
+      # Browser-side URL of the API (the browser talks to the host port, not the container)
+      NEXT_PUBLIC_API_ENDPOINT: http://localhost:8000
+      NEXTAUTH_URL: http://localhost:3000
+      # Bind mounts on macOS/Windows need polling for hot reload
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules # Linux-native deps, separate from the host's
+      - frontend_next:/app/.next
+    command: >
+      sh -c "([ -d node_modules/next ] || npm ci --no-audit --no-fund)
+             && npx prisma generate
+             && npx next dev -p 3000 -H 0.0.0.0"
+    depends_on:
+      backend:
+        condition: service_started
+
+  # Optional local Postgres. Point SUPABASE_DATABASE_URL / DATABASE_URL at
+  # postgresql://agilance:agilance@db:5432/agilance (from containers) or
+  # postgresql://agilance:agilance@localhost:5432/agilance (from the host).
+  db:
+    image: postgres:16-alpine
+    profiles: ["localdb"]
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: agilance
+      POSTGRES_PASSWORD: agilance
+      POSTGRES_DB: agilance
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agilance"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  frontend_node_modules:
+  frontend_next:
+  pgdata:

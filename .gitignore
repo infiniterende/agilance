@@ -1,0 +1,20 @@
+# Backend env
+/backend/.env
+/backend/.env.*
+
+# Frontend env (Next.js uses .env.local, .env.development, etc.)
+/frontend/.env
+/frontend/.env.local
+/frontend/.env.development
+/frontend/.env.production
+/frontend/.env.test
+
+.env
+
+backend/.env
+
+node_modules
+/node_modules
+agilance.pem
+agile.pem
+node_modules

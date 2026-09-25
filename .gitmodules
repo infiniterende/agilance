@@ -1,0 +1,6 @@
+[submodule "backend"]
+	path = backend
+	url = https://github.com/infiniterende/agilance-backend.git
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/infiniterende/triage-ai.git
